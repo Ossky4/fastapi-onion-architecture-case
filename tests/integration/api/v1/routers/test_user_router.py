@@ -2,6 +2,8 @@
 
 import pytest
 from httpx import AsyncClient
+from src.repositories import UserRepository
+from src.schemas.user import UserFilters
 
 from tests.fixtures import testing_cases
 from tests.utils import RequestTestCase, prepare_payload
@@ -32,3 +34,27 @@ class TestUserRouter:
             response = await async_client.get(case.url, headers=case.headers)
             assert response.status_code == case.expected_status
             assert prepare_payload(response) == case.expected_data
+
+    @staticmethod
+    @pytest.mark.usefixtures('setup_users')
+    async def test_get_filters_delegates_filters_contract(
+        async_client: AsyncClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        captured_filters: UserFilters | None = None
+
+        async def _get_users_by_filters_stub(self: UserRepository, filters: UserFilters) -> list:
+            nonlocal captured_filters
+            captured_filters = filters
+            return []
+
+        monkeypatch.setattr(UserRepository, 'get_users_by_filters', _get_users_by_filters_stub)
+
+        response = await async_client.get('/api/user/filters/?first_name=Ivan&last_name=Ivanov')
+
+        assert response.status_code == 200
+        assert prepare_payload(response) == []
+        assert isinstance(captured_filters, UserFilters)
+        assert captured_filters.first_name == ['Ivan']
+        assert captured_filters.last_name == ['Ivanov']
+        assert captured_filters.ids is None
