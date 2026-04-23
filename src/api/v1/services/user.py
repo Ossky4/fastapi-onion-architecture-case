@@ -43,5 +43,5 @@ class UserService(BaseService):
     @transaction_mode
     async def get_users_by_filters(self, filters: UserFilters) -> list[UserDB]:
         """Get users by filter."""
-        users: Sequence[UserModel] = await self.uow.user.get_users_by_filter(filters)
+        users: Sequence[UserModel] = await self.uow.user.get_users_by_filters(filters)
         return [user.to_schema() for user in users]
